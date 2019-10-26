@@ -96,4 +96,138 @@ Always `wait()` in a while-loop, not an if-statement.
 * DO make all `public` methods `synchronized`.
 * DO wrap thread-unsafe classes by monitor.
 
+## Thread safety
+Definition of "thread-safe":
+>  A class is thread-safe if it behaves correctly when accessed from multiple threads ... with no additional synchronization or other coordination on the part of the calling code.
+
+**A monitor is NOT inherently thread-safe!**
+Example:
+```java
+int t = monitor.getTime();
+t = increaseByOneSecond(t);// some  integer  arithmetics
+monitor.setTime(t);
+```
+Even if the monitor methods are mutually exclusive this will not give the desired result.
+*Why?*
+The monitor is **NOT** thread-safe.
+If another thread sets the time in between the two monitor calls the variable `t` is outdated and the new time is lost when `monitor.setTime(t)` is called.
+
+We need to use a single **atomic** operation to make sure that the time is kept correctly.
+Such a method would instead, for example, be: 
+```java
+monitor.increaseTimeByOne();
+```
+OR
+```java
+monitor.increaseTime(1);
+```
+### General idea
+Avoid **race-conditions** by using making monitor methods longer and `wait()`-ing for state changes.
+
+## Immutable objects
+Immutable objects have **all** attributes declared final, so that the object cannot be changed during run-time.
+**Immutable objects are ALWAYS thread-safe**
+
+## The Java memory model
+Assume two threads and no synchronization.
+```java
+int x = 0;
+/// Some time later Thread 1 does:
+x = 7;
+/// And later Thread 2 does:
+System.out.println(x);
+```
+What will be printed?
+**Answer: Can be both 0 or 7!**
+A value written from one thread _without synchronization_ **not automatically** visible to other threads.
+
+### volatile
+In Java synchronized does two things:
+* Ensure mutual exclusion/signaling for threads.
+* Ensure changes to variables are visible to other threads.
+
+In some cases we may wish to have the second feature without the first.
+We can achieve this by declaring an attribute `volatile`.
+
+```java
+volatile int x = 1;
+```
+
+When a volatile shared variable is written its value is automatically visible to other threads.
+With this change the previous example will always print 7.
+However race conditions are still possible, **volatile is not replacement for synchronization**
+
+### Atomic values
+There are some classes in the `java.util.concurrent` package that contains small classes that monitor a single value. E.g. `AtomicInteger`
+
+`AtomicInteger` for example contains the following methods:
+```java
+/** Atomically increments the value by one and returns the current value */
+public int incrementByOneAndGet();
+
+/** Atomically sets the value to the given updated value if current value == expected value. */
+public boolean compareAndSet(int expect, int update);
+```
+
+### Thread-safety key points
+* A thread-safe class meets its specification, even if accessed concurrently accessed by multiple threads.
+* Just making methods `synchronized` is **not** enough.
+* To attain thread-safety we often move logic from the threads to the monitor.
+* An immutable object is **always** thread-safe.
+* If a thread accesses attributes with neither synchronization or `volatile` strange things will happen, sooner or later.
+* Prefer synchronization over `volatile` when ever possible.A
+* Java's `java.util.concurrent` offers classes that support atomic modifications to single values.
+
+## Thread pools and UI.
+We sometimes want to define a **task** with some amount of work to be run in a seperate thread.
+We often don't care which thread runs the task, just that it gets done.
+```java
+class SomeTask implements Runnable {
+    public void run(){
+        // long running work goes-here 
+    } 
+}
+```
+Ideally tasks are (mostly) **independent activities**.
+For tasks we generally care about two things:
+* **Throughput** The average number of tasks completed/second
+* **Response time** The average time to complete a task.
+
+We could run tasks in a dedicated Thread, how ever that results in some problems.
+Each thread results in more context switches, scheduling, overhead, etc.
+This leads to less and less processor resources being spent on useful work!
+
+### Idea: seperate tasks from threads.
+* **Tasks** defined by the application.
+* **Threads** managed centrally.
+
+A **Thread pool** is one way to achieve this.
+* A pool includes a limited number of **worker threads**
+* The **application** submits **tasks** to the **pool**
+* Each worker thread picks a task, runs it, picks another task, runs it, and so on...
+
+Think of thread pool as team or workers, sharing a single TODO-list.
+
+### Thread pool classes
+We can make a simple thread pool by using one of three classes:
+* TaskQueue
+* WorkerThread
+* ThreadPool
+
+```java
+// Creates a ThreadPool with three threads.
+ThreadPool pool = Executors.newFixedThreadPool(3);
+```
+A pool usually implements the `ExecutorService`
+
+
+
+
+
+
+
+
+
+
+                                                                                                                               
 
