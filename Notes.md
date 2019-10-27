@@ -215,19 +215,152 @@ We can make a simple thread pool by using one of three classes:
 * ThreadPool
 
 ```java
-// Creates a ThreadPool with three threads.
-ThreadPool pool = Executors.newFixedThreadPool(3);
+// Creates a ExecutorService pool (thread pool) with three threads.
+ExecutorService pool = Executors.newFixedThreadPool(3);
 ```
-A pool usually implements the `ExecutorService`
+A pool usually implements the `ExecutorService` interface.
+
+### Callables and Futures
+
+Runnables does not produce any results. (return type is `void`)
+However a Callable does.
+```java
+public interface Callable<V>{
+    public V call();
+}
+```
+A thread pool returns a Future, which can be used to keep track of the task's progress.
+
+```java
+public interface Future<V>{
+    /** Waits if necessary for the computation to complete, and then retrieves the result. */
+    V get();
+                                                   
+    /** Attempts to cancel execution of this tasks */
+    boolean cancel(boolean mayInterruptIfRunning);
+
+    /** Returns true if this task is completed. */
+    boolean isDone();
+
+    // ...
+}
+```
+**Runnable**s have no result, but can still be used as Futures.
+
+```java
+Runnable task = () -> { // Do stuff..};
+Future<?> future = pool.submit(task);
+
+future.get() // Will block and return no result. Much like calling join() on a Thread.
+
+// We can cancel (stop) a submitted task with cancel();
+future.cancel(true);
+```
+
+### Swing 
+Standard Java GUI framework.
+Like most other GUI frameworks, Swing requires special care when used with threads.
+
+### Threading in GUI.
+Most GUI frameworks are single-threaded.
+Because of performance and deadlock issues.
+In Swing this is the **Event Dispatch Thread (EDT)**
+
+The EDT can be thought of as a "single-threaded thread pool"
+So to do something with Swing submit it as a task to the EDT.
+
+There is two static methods to submit a runnable to the EDT.
+```java
+SwingUtilites.invokeLater(() -> {...});
+// And
+SwingUtilites.invokeAndWait(() -> {...});
+```
+These are similar but `invokeAndWait();` also blocks.
+The Runnables in used should be short. **Don't** block, `sleep();`, or perform lengthy computations.
+If there is a need to block/perform lengthy computations, use a separate thread or thread pool.
+
+### Swing threading dos and dont's
+* DO wrap all calls to Swing in the static methods.
+* DON'T block, sleep(), etc. in Swing (listener) callbacks.
+
+### Thread confinement
+Thread confinement can be used to achieve **thread-safety**.
+Using a single thread to do the work on behalf of the application makes sure that only thread does all the relevant work.
+
+## Message passing
+In Java we use `BlockingQueues` which can hold messages of any type.
+* A thread can put messages in several queues.
+* A thread _typically_ only reads from one queue. (Otherwise things get tricky, since fetching a message from a queue is a blocking operation)
+* **No shared data** (beyond sent/received messages)
+* Messaging should be asynchronous the `send()` operation should return immediately. (Not block)
+
+* A message queue, as well as a Semaphore can be implemented as a monitor.
+* An empty queue is equivalent to a Semaphore
+.. * The value of the counter of the semaphore corresponds to the number of messages in the mailbox.
+.. * Send message == `release();`
+.. * Receive message == `acquire();`
+* Messages can be arbitrary objects, useful for passing information between threads.
+
+All three constructs are equally powerful, but practical in different situations.
+
+We often want to associate a message queue with a thread.
+Each such thread has its own **queue of received messages**
+Each thread sends to **other** queues (many) and receives from **one**.
+
+### Message passing dos and don'ts
+
+* DON'T share any data (beyond messages) between threads.
+* DON'T retain a message after sending it to another thread.
+* AVOID mixing message-passaging with monitors/semaphores.
+* DO use immutable messages.
+* DO receive messages **EXACTLY ONCE** in your threads.
+* DO include all information the receiver needs in the message, create a Message class if needed.
+
+## Thread interruption
+Java has a general feature for interrupting threads, `interrupt();`.
+
+When the `interrupt();` is called.
+* The interrupted status of the thread is set to `true`.
+* As soon as the thread performs a blocking operation, an `InterruptedException` is thrown.
+* The corresponding catch in the thread will be executed.
+
+Calling `interrupt();` causes the thread to stop **as soon as possible (NOT IMMEDIATELY)**.
+It then performs any final clean-up work, such as close files and network connections.
+Then it exits (return from `run()`).
+
+### Handling InterruptException
+* In a monitor method, we usually **don't know** - use throws.
+* In a `run()` method, we usually **do** - use catch.
+
+## Deadlock
+Mutual exclusion means that a thread can be **blocked**. If the blocking never ends, we have **deadlock** situation.
+
+### No resource preemption 
+Once a thread holds a resource only the thread itself can release it.
+The system, or another thread, cannot take away the resource.
+We say that there is **no resource preemption**.
+
+### Circular wait
+* If several threads **can be** waiting for each other, we have a deadlock **risk**.
+* When several threads are **waiting** for each other, we have a **deadlock**.
+
+### Four conditions for deadlock to occur
+1. Mutual exclusion: only one thread can access a resource at a time. **Always to true**
+2. Hold and wait: a thread can reserve a resource and the wait for another. **Often useful**
+3. No resource preemption: a thread cannot be forced to release held resources. **Always true**
+4. Circular wait: thread-resource dependencies are circular. **Does not have to be true, can be avoided!**
+
+### Resource allocation graphs
+1. Draw resource (e.g. monitors, mutexes)
+2. Draw hold-wait situations (Arrow from each hold resource to a thread marker, arrows from thread marker to resource waited for)
+3. Cycles indicate risk for deadlock. The number of 'hold-wait' links in the circular chain shows how many and which threads are required for deadlock.
+
+### Starvation
+If a thread attempts to allocate a resource it must be able to get it eventually.
+
+### Livelock
+Occurs when several threads attempt to allocate the same resource but none actually get it due to the execution pattern.
+Behaves like deadlock, but the threads actually runs. (But don't do any meaningful work)
 
 
-
-
-
-
-
-
-
-
-                                                                                                                               
 
