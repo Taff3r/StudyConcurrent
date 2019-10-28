@@ -362,5 +362,113 @@ If a thread attempts to allocate a resource it must be able to get it eventually
 Occurs when several threads attempt to allocate the same resource but none actually get it due to the execution pattern.
 Behaves like deadlock, but the threads actually runs. (But don't do any meaningful work)
 
+## Real time systems
 
+A **single-core** computer can only execute one thread at a time.
+A **multi-core** computer can execute multiple threads at the same time, making concurrent applications faster.
+To fully utilize a multi-core computer we need threads, or something equivalent.
 
+**General meaning of Real-time systems**:
+* reactive systems, executing in response to external events.
+**Specific meaning** (in some cases):
+* reactive systems subjects to **deadlines**:
+.. * a late result is at best meaningless, at worst **catastrophic**; often referred to as **firm** or **hard real-time systems**.
+
+### Concepts
+1. **Release time**, the desired start of period/job.
+2. **Start time**, after context switch, invocation of control computation.
+3. **Response time**, contol and execution is completed, including update of control states and any preperation for next sample/job.
+
+### Scheduling
+We could come up with a schedule, assuming we know:
+* Worst-cade repsonse time (R)
+* Deadlne (D)
+* Period (T)
+
+#### Isn't this what OS is for?
+Desktop OS:s 
+* Focus on **average-case** performance (**interactive** systems)
+* Avoid starvation (all threads should eventually get to run)
+* Boost interactive applications
+* Ensure one bad high-prio thread cannot bring down the system
+
+In such operating systems, assigning **higher priority** to a thread leads to it receiving a **larger share of processor time**.
+(The course book recommends against trying to solve concurreny problems using priorities (218-219)
+
+For a (hard) real-time system, we need something else.
+**Real-time operating systems (RTOS)** are designed for predicatable real-time systems, and prioritiex low latency over high throughput.
+A common strategy is to use **strict priorities**: the highest priority, ready threads is **always** selected to run.
+(RTOS should not be run on PCs, as they are not good for interactive systems, RTOSes are good for embedded systems with real-time requirements)
+
+### Regular priorities (desktop OS) vs. strict priorites (RTOS)
+Assume that we have two threads, and T2 has the highest priority.
+```java
+Semaphore sem = new Semaphore(0);
+```
+
+Assume that T2 reaches `sem.acquire()` before T1 has started executing.
+Then T1's call to to `sem.release()` makes T2 ready to continue.
+What happens here? Does T1 or T2 continue first?
+
+In a regular OS, T2 will start running at some later point, and T1 and T2 could execute in any order. (Even on a single core system).
+In an RTOS `sem.release()` will cause an automatic context switch, and T2 will run immediately, since it has higher priority (On a single core machine).
+
+### Fixed priority scheduling
+* Most OS's schedulers, as well as Java threads are based on priorities. (Other choices are possible, e.g. deadling scheduling).
+* For real-time systems, we use strict priorites. (Typically handeled by an RTOS)
+* We assume **fixed-priority scheduling**, the threads priority don't change during run-time.
+* We assume that we know the WCET (worst-case execution time) for each task.
+
+### Scheduling analysis
+**Problems:**
+* How can we know wheter or not our threads will meet their deadlines?
+* How do we assign priorites to our threads? 
+
+### Rate monotonic scheduling
+**Idea**: Set priority according to period.
+Short period == high priority!
+
+**Notation**
+For each thread we know:
+* T = Period
+* C = Execution Time (WCET)
+* U = C/T = CPU Utilization
+
+### Earliest deadline first
+**Idea**: always assign the CPU the to thread cloesest to its deadline.
+Advantages: 100% CPU utilization is possible.
+**BUT** requires special OS support, **and** behaves badly at overload. (Leading to all deadlines missed)
+
+### Complications
+#### Blocking
+A high-priority thread must not wait for lower-priority threads (more than a short time)
+**Problem**: Can we guarantee timing for high-priority threads without knowing all low- or medium-priority threads?
+What about blocking on shared resources?
+
+#### Priority inversion
+Suppose we have three threads with (H)igh, (M)edium, and L(ow) priorities:
+1. L executes and enters a critical region
+2. M preempts and start executing
+3. H preempts and tre to enter a monitor. H is blocked.
+4. M continues executing for an arbitrary long period of time, blocking both L **AND** H!
+
+#### WCET
+Will the following loop ever terminate?
+```java
+int n = 1234;
+while(n != 1){
+    if(n % 2 == 0){
+        n = n / 2;
+    }else{
+        n = n * 3 + 1;
+    }
+}
+```
+What is the WCET of this algorithm?
+
+### Limitations of fixed-priority scheduling
+
+* The present theoretical frameworks (RMS, EDF, ...) assume a **single core processor**
+* Multicore real-time scheduling is an area of active research (and far more complex)
+* Quickly gets even more complicated when we take blocking and priority inversion into account.
+* WCET is notoriously hard to obtain.
