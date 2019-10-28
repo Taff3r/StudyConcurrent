@@ -1,6 +1,7 @@
 import java.util.concurrent.Semaphore;
 
 public class SignallingSempahores {
+    private int x = 2;
     public static void doStuff(String name, Semaphore a, Semaphore b){
         while(true) {
             try {
