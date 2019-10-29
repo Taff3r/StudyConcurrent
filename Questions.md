@@ -34,8 +34,8 @@ monitor.increaseValueBy(2);
 ### Intrinsic locks (i.e. the `synchronized` locks) are reentrant. As the name suggests, `ReentrantLock` objects are too.
 1. What does "reentrant" mean in this context?
 2. Why are reentrant locks useful?
-
-1. Because the threads reenter at the same position (line of code) when they are unblocked.
+**Answer**
+1. The process can claim the lock multiple times without blocking on itself.
 2. They can provide synchronization of critical areas in code.
 
 ### For each of the following implementations of a `BankAccount` class determine whether or not the implementations are thread-safe.
@@ -62,8 +62,9 @@ Describe each of these in one or two sentances. For each technique, explain how 
 1. Which of the terms corresponds most closely to a monitor?
 2. Which of the terms is used with the Swing EDT?
 
-*. **Instance confinement**
-*. **Thread confinement** 
+**Answer**
+1. **Instance confinement**
+2. **Thread confinement** 
 
 ### The BlockingQueue interface is implemented by ArrayBlockingQueue and LinkedBlockingQueue. The former has a bounded size, whereas the latter does not. Consider the call:
 ```java
@@ -72,14 +73,15 @@ q.put(m);
 1. Can the `put()` call block if `q` is an `ArrayBlockingQueue`?
 2. Can the `put()` call block if `q` is an `LinkedBlockingQueue`?
 
+**Answer**
+1. Yes. Blocks if queue is full.
+2. No. Adds the element directly to the queue. 
 
-*. No. Throws exception directly if queue is full.
-*. Yes. Waits until the lock is available to add an element to the queue.
-
-**Advatantages of blocking** `put()`: No tasks get lost.
-**Disadvatantages of blocking** `put()`: Performance loss. (?)
+**Advatantages of blocking** `put()`: Can be helpful if you want to throttle the amount of requests. With our own implementation, if the queue is full, we can also signal to the consumer that the queue is full and that they should wait and try later.
+**Disadvatantages of blocking** `put()`: Consumer can get way ahead of producers, eventually leading to a `OutOfMemoryError`.
 
 ### What is `InterruptedException`? In which situations is it thrown?
+**Answer**
 `InterruptedException` is an exception which is thrown when a thread gets interrupted, either before or during the activity.
 `InterruptedException` can be thrown when a thread is, waiting, sleeping, other blocking operations, or otherwise occupied.
 
@@ -141,8 +143,10 @@ Another thread now attempts to interrupt `t2`, just like in the previous example
 1. Why doesn't the `InterruptedException` reach `t2run()`?
 2. Modify `Queue` to rectify the problem, by removing a few lines, and changing another.
 .. * When the following command is executed: `t2.interrupt();` thread `t2` should now execute its catch clause and print "terminated".
-* Because the `InterruptedException` is ignored and not passed further up the stack.
-* The fix:
+**Answer**
+1. Because the `InterruptedException` is ignored and not passed further up the stack.
+2. The fix:
+
 ```java
 public class Queue {
     private List<String> list = new LinkedList<String>();
@@ -215,7 +219,7 @@ It adds a Runnable to a queue of GUI updates that will get executed.
 
 ### What is the output of the following lines?
 ```java
-SwingUtilites.invokeLater(() ->{
+SwingUtilites.invokeLater(() -> {
     if(SwingUtilites.isEventDispatchThread()){
         System.out.println("X");
     }else{
@@ -229,11 +233,11 @@ X
 ### Lock-free (or non-blocking) data structurs attain thread safety without using blocking or locks.
 1. State one advantage of lock-free data structures.
 2. How do lock-free data structures work? What synchronization mechanism(s) do they rely on?
-Explain the idea in a feq (two-three) sentences.
+Explain the idea in a few (two-three) sentences.
 
 **Answer**
-TODO
-
+1. Guaranteed system-wide progress. Better for performance.
+2. Non-blocking data structures uses common memory and atomic read-modify-write primitives that the hardware must provide. Critical sections are almost always implemented using standard interfaces over these primitives. 
 
 ### 19 TODO
 
@@ -272,4 +276,51 @@ lo.start();
 2. hi then lo, since there is automatic context switch after the semaphore is released. 
 
 
-## TODO the rest
+### Suppose we have a real-time system with four threads running in an RTOS, using strict priorites, scheduled according to the RMS (Rate Monotonic Scheduling) strategy. For each threadi, we knowthe worst-case execution time Ci and the execution period Ti. We assume that the thread’s deadline equals  he period  –  that is, the thread must complete  its work before the next time it needs to execute.
+We calculate U as:
+U = Sum(1->4){Ci / Ti}
+For which values of U can we be **sure** that the system is scheduable? - that is, that all threads will meet their deadlines. (**Assume a single core processor**)A
+
+**Answer**
+Using RMS analysis we can **guarantee** schedulabilitry if the sum stays below the upper bound U.
+Sum < n(2^(1/n) - 1) = Un, where n is the number of threads.
+So in this case: 4(2^(1/4) - 1) = 4*root(2)^root(2) - 4 = ~0.757
+So all values of the sum that is < 0.757 is **guaranteed** to be scheduable.
+
+### What is priority inversion? Explain in one or a few sentences.
+**Answer**
+Suppose we have three threads with (H)igh, (M)edium, and L(ow) priorities:
+1. L executes and enters a critical region
+2. M preempts and start executing
+3. H preempts and tries to enter a monitor. H is blocked.
+4. M continues executing for an arbitrary long period of time, blocking both L **AND** H!
+
+### What is a distributed system? Explain in one or a few sentences.
+A distributed system is a network that consists of autonomous computers that are connnected using a distribution middleware. They help in sharing different resources and capabilities to provide users with a single and integrated coherent network.
+
+### When we design software, we often don’t need to consider hardware failures. For a distributed system, however, we must. Why?
+**Answer**
+TODO
+
+### Why is message-passing useful in distributed systems?A
+**Answer**
+With distributed objects the sender and receiver may be on different computers, running different operating systems, using different programming languages, etc. In this case the bus layer takes care of details about converting data from one system to another, sending and receiving data across the network, etc.
+
+### Virtually all computers use cache memories. On a multi-core computer, different threads may observe different values for the same variable. How can this happen? (Remember that on a multi-core computer, different threads may run on different cores.)
+**Answer**
+Each core has their own cache, which they access first sice it is faster. Example:
+* Suppose processor `P1` has read the value of variable `x`.
+* A _copy_ of `x` will be in the cache of `P1`.
+* Assume next `P2` writes a new value to `x`.
+* That new value, `x1`, will be in the cache of `P2`.
+* What happens if `P1` wants to read `x` again?
+* _Without_ caches `P1` would propably see the new value (If it has reached memory).
+
+### Consider a situation where we use transactional memory instead of locks.
+1. Deadlock is no longer possible. Why?
+2. Instead, there is a greater potential for livelock. How?
+
+**Answer**
+1. There are no locks.
+2. If there is a conflict in a transaction and both threads startover there can occur another conflict and it starts over again, repeat indefinetely...
+.. *. Ex: Imaging walking down the street and walking into someone, you turn right, while the person meeting you turns left, you then turn left, and he turns right, but since the threads don't communicate this goes on forever.
