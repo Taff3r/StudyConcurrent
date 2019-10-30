@@ -40,10 +40,10 @@ monitor.increaseValueBy(2);
 
 ### For each of the following implementations of a `BankAccount` class determine whether or not the implementations are thread-safe.
 
-1. No since the +=/-= are not atomic operations. If multiple threads access the bank account object, the first thread can read the `balance` through deposit without adding, another thread can `withdraw()` reading the same value and decrementing, and then yet another thread does another `withdraw()` and decrements the value. The first thread then increments the value and returns. Since there is no synchronization only the threads that writes the last will count.
-2. No even though there is synchronization and the `balance` attribute is declared private, a thread can still read the `balance` attribute at an earlier state, and have a race condition against other threads if a deposit call requires that you for example deposit a portion of the current balance.
-3. No even though  when a variable is declated `volatile` it is instantly updated in all threads when it is changed, there is still `getBalance()` for the same reason as above.
-4. No since atomic operations ready and write in one synchronized method, see example above.
+1. No since the +=/-= are not atomic operations or `synchronized`. If multiple threads access the bank account object, the first thread can read the `balance` through deposit without adding, another thread can `withdraw()` reading the same value and decrementing, and then yet another thread does another `withdraw()` and decrements the value. The first thread then increments the value and returns. Since there is no synchronization only the threads that writes the last will count.
+2. Yes since they methods are synchronized and only one thread can access the monitor at once. As long as the `getBalance()`-method is only used for viewing the latest balance, and not used in operations to withdraw or deposit.
+3. Yes since when a variable is declated `volatile` it is instantly updated in all threads when it is changed, there is still `getBalance()` for the same reason as above.
+4. Yes since atomic operations ready and write in one operation.
 
 ### Consider the following four techniques for thread safety:
 
