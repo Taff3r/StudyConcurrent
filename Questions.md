@@ -42,7 +42,7 @@ monitor.increaseValueBy(2);
 
 1. No since the +=/-= are not atomic operations or `synchronized`. If multiple threads access the bank account object, the first thread can read the `balance` through deposit without adding, another thread can `withdraw()` reading the same value and decrementing, and then yet another thread does another `withdraw()` and decrements the value. The first thread then increments the value and returns. Since there is no synchronization only the threads that writes the last will count.
 2. Yes since they methods are synchronized and only one thread can access the monitor at once. As long as the `getBalance()`-method is only used for viewing the latest balance, and not used in operations to withdraw or deposit.
-3. Yes since when a variable is declated `volatile` it is instantly updated in all threads when it is changed, there is still `getBalance()` for the same reason as above.
+3. No since when a variable is declated `volatile` it is instantly updated in all threads when it is changed, however race conditions can still occur.
 4. Yes since atomic operations ready and write in one operation.
 
 ### Consider the following four techniques for thread safety:
